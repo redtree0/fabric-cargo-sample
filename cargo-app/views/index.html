@@ -1,0 +1,159 @@
+
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Hyperledger Fabric Crago Contract Application</title>
+    <link rel="icon" href="images/favicon.png" type="image/gif">
+
+    <!-- require jquery and bootstrap scripts -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.0/jquery.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.4.3/angular.min.js"></script>
+  
+
+    <!-- adding style here -->
+    <style type="text/css">
+      header{
+        background-color: lightgray;
+        font-size:20px;
+        padding:15px;
+      }
+      header, .form-group{
+        margin-bottom: 3%;
+      }
+      .form-group{
+        width:50%;
+      }
+      #body{
+        margin-left:3%;
+        margin-right:3%;
+      }
+      .form-control{
+        margin: 8px;
+      }
+      #right_header{
+        width:20%;
+        font-size:15px;
+        margin-right:0px;
+      }
+      #left_header{
+        margin-left:0;
+        width:40%;
+        display:inline-block;
+      } 
+      #id {
+        width:49%;
+        display: inline-block;
+      }
+      table {
+          font-family: arial, sans-serif;
+          border-collapse: collapse;
+          width: 100%;
+      }
+      td, th {
+          border: 1px solid #dddddd;
+          text-align: left;
+          padding: 8px;
+      }
+      tr:nth-child(even) {
+          background-color: #dddddd;
+      }
+    </style>
+  </head>
+  <body ng-app="application" ng-controller="appController">
+    <header>
+      <div id="left_header">Hyperledger Fabric Cargo Contract Application</div>
+    </header>
+
+    <div id="body">
+      <div class="form-group">
+        <label>Query All Cargos</label>
+        <p><input id="queryAllCargos" type="submit" value="Query" class="btn btn-primary" ng-click="queryAllCragos()"></p>
+      </div>
+ 
+      <table id="all_tuna" class="table" align="center">
+
+        <tr>
+          <th>Key</th>
+          <th>Weight</th>
+          <th>Distance</th>
+          <th>Money</th>
+          <th>Date</th>
+          <th>Status</th>
+          <th>Registrant</th>
+          <th>Driver</th>
+        </tr>
+     
+        <tr ng-repeat="cargo in all_cargo">
+            <td>{{cargo.Key}}</td>
+          <td>{{cargo.weight}}</td>
+          <td>{{cargo.distance}}</td>
+          <td>{{cargo.money}}</td>
+          <td>{{cargo.date}}</td>
+          <td>{{cargo.Status}}</td>
+          <td>{{cargo.Registrant}}</td>
+          <td>{{cargo.Driver}}</td>
+        </tr>
+      </table>
+
+      <div class="form-group">
+        <label>Query a Specific Cargo Contract</label><br>
+        <h5 style="color:red;margin-bottom:2%" id="error_query">Error: Please enter a valid Cargo Id</h5>
+        
+        Enter a catch number: <input id="createName" class="form-control" type="text" placeholder="Ex: CARGO4" ng-model="cargo_id">
+        <input id="querySubmit" type="submit" value="Query" class="btn btn-primary" ng-click="queryCargo()">
+      </div>
+
+      <table id="query_cargo" class="table" align="center">
+
+        <tr>
+            <th>Weight</th>
+            <th>Distance</th>
+            <th>Money</th>
+            <th>Date</th>
+            <th>Status</th>
+            <th>Registrant</th>
+            <th>Driver</th>
+        </tr>
+
+        <tr>
+          <td>{{query_cargo.weight}}</td>
+          <td>{{query_cargo.distance}}</td>
+          <td>{{query_cargo.money}}</td>
+          <td>{{query_cargo.date}}</td>
+          <td>{{query_cargo.Status}}</td>
+          <td>{{query_cargo.Registrant}}</td>
+          <td>{{query_cargo.Driver}}</td>
+        </tr>
+      </table>
+
+      <div class="form-group">
+        <label>Create Cargo Contract</label>
+        <h5 style="color:green;margin-bottom:2%" id="success_create">Success! Tx ID: {{create_cargo}}</h5>
+        <br>
+        Enter Key: <input class="form-control" type="text" placeholder="Ex: 11" ng-model="cargo.Key" value="CARGO5">
+        Enter Weight: <input class="form-control" type="text" placeholder="Ex: 0239L" ng-model="cargo.weight" value="3">
+        Enter Date: <input class="form-control" type="text" placeholder="Ex: yyyy-mm-dd" ng-model="cargo.date" value="3">
+        Enter Registrant : <input class="form-control" type="text" placeholder="Ex: registrantId" ng-model="cargo.Registrant" value="test"> 
+        Enter Driver: <input class="form-control" type="text" placeholder="Ex: driverId" ng-model="cargo.Driver" value="test">
+        Enter Status: <input class="form-control" type="text" placeholder="Ex: 0 or 1 or 2 or 3 " ng-model="cargo.Status" value="3">
+        Enter Distance: <input class="form-control" type="text" placeholder="Ex: 4.0" ng-model="cargo.distance" value="3">
+        Enter Money: <input class="form-control" type="text" placeholder="Ex: 4.0" ng-model="cargo.money" value="3">
+        <input id="createSubmit" type="submit" value="Create" class="btn btn-primary" ng-click="recordCargo()"> 
+      </div>
+
+      <div class="form-group">
+        <label>Change Cargo Status</label><br>
+        <h5 style="color:green;margin-bottom:2%" id="success_holder">Success! Tx ID: {{change_status}}</h5>
+        <h5 style="color:red;margin-bottom:2%" id="error_holder">Error: Please enter a valid Cargo Id</h5>
+        Enter a CARGO Key : <input class="form-control" name="assetSelect" placeholder="Ex: 1" ng-model="cargo.Key">
+        Enter new Status: <input class="form-control" name="assetSelect" placeholder="Ex: Barry" ng-model="cargo.Status">
+        <input id="transferSubmit" type="submit" value="Change" class="btn btn-primary" ng-click="changeStatus()">
+      </div>
+
+    </div>
+  </body>
+    <!-- requiring the angular page -->
+    <script type="text/javascript" src="javascripts/core.js"> </script>
+</html>
