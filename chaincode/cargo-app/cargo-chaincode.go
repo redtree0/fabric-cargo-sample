@@ -90,7 +90,7 @@
  }
 
 
- func (s *SmartContract) queryCargo(stub shim.ChaincodeStubInterface, args []string) sc.Response {
+ func (s *SmartContract) queryCargo(stub shim.ChaincodeStubInterface, args []string) peer.Response {
  
 	if len(args) != 1 {
 		return shim.Error("Incorrect number of arguments. Expecting 1")
