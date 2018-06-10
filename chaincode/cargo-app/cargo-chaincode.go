@@ -3,50 +3,68 @@
 
  import (
 	 "fmt"
- //	"time"
+  	"time"
 	 // "reflect"
-	 "bytes"
+	// "bytes"
 	 "encoding/json"
-	 "strconv"
+	//  "strconv"
 	 "github.com/hyperledger/fabric/core/chaincode/shim"
 	 "github.com/hyperledger/fabric/protos/peer"
  )
  
- type Status int
+
  
+ 	/********************************************************
+	 상태값
+	 Succcess - 운전자와 화물 의뢰자 간 계약이 채결이 된 상태
+	 FAIL - 화물 계약이 취소 및 파토?
+     Yet - 운전자와 화물 의뢰자 간 계약이 채결이 되기 전 상태
+	 COMPLETE - 화물 이송이 끝나고 계약이 완료됨
+	**********************************************************/
  const (
-	 SUCCESS Status = 1+ iota
-	 FAIL
-	 YET
-	 COMPLETE
+	 SUCCESS string = "Success"
+	 FAIL string = "Fail"
+	 YET string = "Yet"
+	 COMPLETE string = "Complete"
  )
- 
- var status = [...]string{
-	 "Success",
-	 "Fail",
-	 "Yet",
-	 "Complete" ,
- }
- 
- func (s Status) String() string{ return status[(s-1)%4]}
+
  
  // SmartContract implements a simple chaincode to manage an asset
  type SmartContract struct {
  }
- 
- // Define the car structure, with 4 properties.  Structure tags are used by encoding/json library
- type CargoContract struct {
-	 // Make   string `json:"make"`
-	 // Model  string `json:"model"`
-	 // Colour string `json:"colour"`
-	 // Owner  string `json:"owner"`
+
+ 	/********************************************************
+	  화물 계약
+	  화물계약은 CARGO + YYYYMMDD 형식이 키이다
+ 	  
+	  TxId - 트랜젝션 ID, 화물 계약이 등록될 시 생성
+	   Weight - 화물 무게
+	   Distance - 거리
+	   Money - 의뢰 금액
+		Date - 의뢰 일
+		Registrant - 화물 의뢰자
+		Driver - 화물 운송업자
+		Status - 계약 상태
+	**********************************************************/
+type CargoContract struct {
+	 TxId string `json:"txId"`
 	 Weight int `json:"weight"`
 	 Distance float64 `json:"distance"`
 	 Money float64 `json:"money"`
 	 Date string `json:"date"`
 	 Registrant string `json:registrant`
 	 Driver string `json:driver`
-	 Status Status `json:status`
+	 Status string `json:status`
+ }
+
+ /********************************************************
+	 계정 별 포인트 현황
+	 User - 계정 ID
+	 Total - 계정 보유 포인트
+	**********************************************************/
+ type PointContract struct {
+	 User string `json:user`
+	 Total int `json:total`
  }
  
  var logger = shim.NewLogger("example_cc0")
@@ -74,7 +92,7 @@
 
 	 switch method := fn; method {
 		 case "queryAllCargo":
-			 return t.queryAllCargo(stub)
+			 return t.queryAllCargo(stub, args)
 		 case "initLedger":
 			 return t.initLedger(stub)
 		 case "createContract":
@@ -83,6 +101,12 @@
 			 return t.changeStatus(stub, args)
 		 case "queryCargo" :
 			  return t.queryCargo(stub, args)
+		case "queryPoint" :
+			return t.queryPoint(stub, args)
+		case "addPoint":
+			return t.addPoint(stub, args)
+		case "subtractPoint":
+			return t.subtractPoint(stub, args)
 		 default :
 		      return shim.Success([]byte(nil))
 	 }
@@ -90,124 +114,64 @@
  }
 
 
- func (s *SmartContract) queryCargo(stub shim.ChaincodeStubInterface, args []string) sc.Response {
- 
-	if len(args) != 1 {
-		return shim.Error("Incorrect number of arguments. Expecting 1")
-	}
-
-	tunaAsBytes, _ := stub.GetState(args[0])
-	if tunaAsBytes == nil {
-		return shim.Error("Could not locate tuna")
-	}
-	return shim.Success(tunaAsBytes)
-}
- 
- func  (t *SmartContract) queryAllCargo(stub shim.ChaincodeStubInterface) peer.Response {
-	 startKey := "CARGO0"
-	 endKey := "CARGO999"
- 
-	 resultsIterator, err := stub.GetStateByRange(startKey, endKey)
-	 if err != nil {
-		 return shim.Error(err.Error())
-	 }
-	 defer resultsIterator.Close()
- 
-	 // buffer is a JSON array containing QueryResults
-	 var buffer bytes.Buffer
-	 buffer.WriteString("[")
- 
-	 bArrayMemberAlreadyWritten := false
-	 for resultsIterator.HasNext() {
-		 queryResponse, err := resultsIterator.Next()
-		 if err != nil {
-			 return shim.Error(err.Error())
-		 }
-		 // Add a comma before array members, suppress it for the first array member
-		 if bArrayMemberAlreadyWritten == true {
-			 buffer.WriteString(",")
-		 }
-		 buffer.WriteString("{\"Key\":")
-		 buffer.WriteString("\"")
-		 buffer.WriteString(queryResponse.Key)
-		 buffer.WriteString("\"")
- 
-		 buffer.WriteString(", \"Record\":")
-		 // Record is a JSON object, so we write as-is
-		 buffer.WriteString(string(queryResponse.Value))
-		 buffer.WriteString("}")
-		 bArrayMemberAlreadyWritten = true
-	 }
-	 buffer.WriteString("]")
- 
-	 fmt.Printf("- queryAllCARGO:\n%s\n", buffer.String())
- 
-	 return shim.Success(buffer.Bytes())
- 
- }
- 
+ 	/********************************************************
+	 체인코드 실행 시 실행되는 초기 데이터 셋
+	 docker-compose에 정의됨
+	 cargo , point에 관련된 데이터 셋 정의
+	**********************************************************/
  func (t *SmartContract) initLedger(stub shim.ChaincodeStubInterface) peer.Response {
- 
-	 contracts := []CargoContract{
-		 CargoContract{Weight: 3, Distance: 5.0, Money: 5.0, Date: "2018-05-26", Registrant : "you", Driver : "me", Status : Status(1)},
-		 CargoContract{Weight: 6, Distance: 5.0, Money: 5.0, Date: "2018-05-26", Registrant : "you", Driver : "me", Status : Status(2)},
-		 CargoContract{Weight: 4, Distance: 5.0, Money: 5.0, Date: "2018-05-26", Registrant : "you", Driver : "me", Status : Status(0)},
-		 CargoContract{Weight: 3, Distance: 5.0, Money: 5.0, Date: "2018-05-26", Registrant : "you", Driver : "me", Status : Status(2)},
-		 CargoContract{Weight: 3, Distance: 5.0, Money: 5.0, Date: "2018-05-26", Registrant : "you", Driver : "me", Status : Status(3)},
+
+	now := time.Now()
+	dateTestValue := now.Format("2006-01-02")
+
+	cargos := []CargoContract{
+		CargoContract{TxId : "txId1", Weight: 3, Distance: 5.0, Money: 5.0, Date: dateTestValue, Registrant : "you", Driver : "me", Status : SUCCESS},
+		CargoContract{TxId : "txId2",Weight: 6, Distance: 5.0, Money: 5.0, Date: dateTestValue, Registrant : "you", Driver : "me", Status : YET},
+		CargoContract{TxId : "txId3",Weight: 4, Distance: 5.0, Money: 5.0, Date: dateTestValue, Registrant : "you", Driver : "me", Status : SUCCESS},
+		CargoContract{TxId : "txId4",Weight: 3, Distance: 5.0, Money: 5.0, Date: dateTestValue, Registrant : "you", Driver : "me", Status : SUCCESS},
+		CargoContract{TxId : "txId5",Weight: 3, Distance: 5.0, Money: 5.0, Date: dateTestValue, Registrant : "you", Driver : "me", Status : FAIL},
 	 }
- 
-	 i := 0
-	 for i < len(contracts) {
-		 fmt.Println("i is ", i)
-		 cargoAsBytes, _ := json.Marshal(contracts[i])
-		 stub.PutState("CARGO"+strconv.Itoa(i), cargoAsBytes)
-		 fmt.Println("Added", contracts[i])
-		 i = i + 1
+	 cargosAsBytes, _ := json.Marshal(cargos)
+	 date := now.Format("20060102")
+     fmt.Println(date)
+	 stub.PutState("CARGOS" + date , cargosAsBytes)
+
+
+	 testdate := time.Date(
+        2018, 6, 6, 0, 0, 0, 0, time.UTC)
+    
+	 dateTestValue2 := testdate.Format("2006-01-02")
+	 cargos1 := []CargoContract{
+		CargoContract{TxId : "txId1",Weight: 3, Distance: 5.0, Money: 5.0, Date: dateTestValue2, Registrant : "you", Driver : "me", Status : FAIL},
+		CargoContract{TxId : "txId2",Weight: 6, Distance: 5.0, Money: 5.0, Date: dateTestValue2, Registrant : "you", Driver : "me", Status : COMPLETE},
+		CargoContract{TxId : "txId3",Weight: 4, Distance: 5.0, Money: 5.0, Date: dateTestValue2, Registrant : "you", Driver : "me", Status : SUCCESS},
+		CargoContract{TxId : "txId4",Weight: 3, Distance: 5.0, Money: 5.0, Date: dateTestValue2, Registrant : "you", Driver : "me", Status : SUCCESS},
+		CargoContract{TxId : "txId5",Weight: 3, Distance: 5.0, Money: 5.0, Date: dateTestValue2, Registrant : "you", Driver : "me", Status : YET},
 	 }
- 
-	 return shim.Success(nil)
+	 cargosAsBytes1, _ := json.Marshal(cargos1)
+	 date1 := testdate.Format("20060102")
+	 stub.PutState("CARGOS" + date1 , cargosAsBytes1)
+
+	
+	 point := []PointContract{
+		PointContract{User : "you", Total : 500},
+		PointContract{User : "me", Total : 1000},
+		PointContract{User : "kim", Total : 1500},
+	 }
+
+	 pointAsBytes, _ := json.Marshal(point[0])
+	 stub.PutState("USER.you" , pointAsBytes)
+	 pointAsBytes1, _ := json.Marshal(point[1])
+	 stub.PutState("USER.me" , pointAsBytes1)
+	 pointAsBytes2, _ := json.Marshal(point[2])
+	 stub.PutState("USER.kim" , pointAsBytes2)
+
+
+	return shim.Success(nil)
  }
  
- 
- func (t *SmartContract) createContract(stub shim.ChaincodeStubInterface, args []string) peer.Response {
- 
-	 if len(args) != 8 {
-		 return shim.Error("Incorrect number of arguments. Expecting 5")
-	 }
-	 w, _ := strconv.Atoi(args[1])
-	 d, _ := strconv.ParseFloat(args[2], 64)
-	 m, _ := strconv.ParseFloat(args[3], 64)
-	 s, _ := strconv.Atoi(args[7])
-	 var cargo = CargoContract{Weight: w, Distance: d, Money: m, 
-		 Date: args[4], Registrant : args[5], Driver : args[6], Status : Status(s)}
- 
-	 cargoAsBytes, _ := json.Marshal(cargo)
-	 key := args[0]
-	 stub.PutState(key, cargoAsBytes)
- 
-	 return shim.Success(nil)
- }
- 
- func (t *SmartContract) changeStatus(stub shim.ChaincodeStubInterface, args []string) peer.Response {
- 
-	 if len(args) != 2 {
-		 return shim.Error("Incorrect number of arguments. Expecting 2")
-	 }
- 
-	 cargoAsBytes, _ := stub.GetState(args[0])
-	 cargo := CargoContract{}
- 
-	 json.Unmarshal(cargoAsBytes, &cargo)
-	 s, _ := strconv.Atoi(args[1])
-	 cargo.Status = Status(s)
- 
-	 cargoAsBytes, _ = json.Marshal(cargo)
-	 stub.PutState(args[0], cargoAsBytes)
- 
-	 return shim.Success(nil)
- }
- 
- 
+
+
  // main function starts up the chaincode in the container during instantiate
  func main() {
 	 if err := shim.Start(new(SmartContract)); err != nil {
