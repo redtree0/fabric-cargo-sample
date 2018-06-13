@@ -25,6 +25,7 @@ mysql 8.0
 8) http://localhost:8000/login 접속
 </code></pre>
 
+### 그림을 누르면 영상을 볼수 있습니다.
 [![Alt text for your video](https://i.ytimg.com/vi/g0MRWP9w86Q/hqdefault.jpg)](https://www.youtube.com/watch?v=g0MRWP9w86Q)
 
 
