@@ -3,7 +3,6 @@ var router = express.Router();
 
 
 //SPDX-License-Identifier: Apache-2.0
-
 var controller = require('../controller.js');
 
 router.get('/get_cargo/:id', function(req, res){
@@ -19,8 +18,13 @@ router.post('/change_status', function(req, res){
   controller.change_status(req, res);
 });
 /* GET home page. */
+
 router.get('/', function(req, res, next) {
   res.render('index');
+});
+
+router.get('/login',(req, res, next) => {
+  res.render('login');
 });
 
 module.exports = router;

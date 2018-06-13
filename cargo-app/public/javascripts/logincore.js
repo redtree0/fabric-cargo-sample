@@ -2,19 +2,46 @@
 
 'use strict';
 
-var app = angular.module('application', []);
+var app = angular.module('loginapp', []);
 
 // Angular Controller
 app.controller('appController', function($scope, appFactory){
 
-	$("#success_holder").hide();
-	$("#success_create").hide();
-	$("#error_holder").hide();
-	$("#error_query").hide();
+	$("#login_rtnval").hide();
+	$("#register_rtnval").hide();
+	$("#logout_rtnval").hide();
 
+  $scope.login = function(){
+		appFactory.clogin($scope.logn, function(data){
+			$scope.login_rtn = data;
+			$("#login_rtnval").show();
+		});
+	}
+
+	$scope.register = function(){
+		appFactory.cregister($scope.reg, function(data){
+			$scope.register_rtn = data;
+			$("#register_rtnval").show();
+		});
+	}
+
+	$scope.logininfo = function(){
+		appFactory.clogininfo(function(data){
+			$scope.login_data = data;
+		});
+	}
+
+	$scope.logout = function(){
+		appFactory.clogout(function(data){
+			$scope.logout_data = data;
+			$("#logout_rtnval").show();
+		});
+	}
+});
+	/*
 	$scope.queryAllCragos = function(){
 
-		appFactory.queryAllCragos(function(data){
+		appFactory.login(function(data){
 			var array = [];
 			for (var i = 0; i < data.length; i++){
 				// parseInt(data[i].Key);
@@ -28,7 +55,6 @@ app.controller('appController', function($scope, appFactory){
 			$scope.all_cargo = array;
 		});
 	}
-
 	$scope.queryCargo = function(){
 
 		var id = $scope.cargo_id;
@@ -36,11 +62,6 @@ app.controller('appController', function($scope, appFactory){
 		appFactory.queryCargo(id, function(data){
 			$scope.query_cargo = data;
 			// console.log(data);
-			if ($scope.query_cargo == "ERROR"){
-				$("#error_query").show();
-			} else{
-				$("#error_query").hide();
-			}
 		});
 	}
 
@@ -67,40 +88,39 @@ app.controller('appController', function($scope, appFactory){
 	}
 
 });
+*/
 
 // Angular Factory
 app.factory('appFactory', function($http){
 
 	var factory = {};
 
-    factory.queryAllCragos = function(callback){
+	factory.clogin = function(data, callback){
 
-    	$http.get('/get_all_cargo/').success(function(output){
-			callback(output)
-		});
-	}
-
-	factory.queryCargo = function(id, callback){
-    	$http.get('/get_cargo/'+id).success(function(output){
-			callback(output)
-		});
-	}
-
-	factory.recordCargo = function(data, callback){
-
-
-		$http.post('/add_cargo/', data).success(function(output){
+		$http.post('/login/', data).success(function(output){
 			callback(output)
 		});
 
 	}
 
-	factory.changeStatus = function(data, callback){
+	factory.cregister = function(data, callback){
 
-		$http.post('/change_status/', data).success(function(output){
+		$http.post('/register/', data).success(function(output){
+			callback(output)
+		});
+
+	}
+
+	factory.clogininfo = function(callback){
+    	$http.get('/logininfo/').success(function(output){
 			callback(output)
 		});
 	}
 
+	factory.clogout = function(callback){
+    	$http.get('/logout/').success(function(output){
+			callback(output)
+		});
+	}
 	return factory;
 });
