@@ -42,7 +42,7 @@ module.exports = (function(){
                 'chaincodeId': chaincodeId,
                 'txId': txId,
                 'fcn': fnc,
-                'chainId': chaincodeId,
+                'chainId': chainId,
                 'args': args
             };
         }else {
@@ -60,10 +60,10 @@ module.exports = (function(){
         });
     }
 
-    helper.query = function( request, userHandler){
-        let user = "user1";
+    helper.query = function(user, request, userHandler){
+        let userid = user;
         let isOnlyQuery = true;
-        helper.common(user, request, isOnlyQuery).then((query_responses) => {
+        helper.common(userid, request, isOnlyQuery).then((query_responses) => {
             userHandler(query_responses);
         }).catch((err) => {
             console.error('Failed to query successfully :: ' + err);
@@ -117,12 +117,12 @@ module.exports = (function(){
         
     }
    
-    helper.transaction = function(request, userHandler){
+    helper.transaction = function(user,request, userHandler){
         // var tx_id = null;
 
-        let user = "user1";
+        let userid = user;
         let isOnlyQuery = false;
-        helper.common(user, request, isOnlyQuery).then((results) => {
+        helper.common(userid, request, isOnlyQuery).then((results) => {
             var proposalResponses = results[0];
             var proposal = results[1];
             let isProposalGood = false;
