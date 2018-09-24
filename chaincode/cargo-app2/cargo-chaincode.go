@@ -120,6 +120,8 @@ type CargoContract struct {
 			   return t.subtractPoint(stub, args)
      case "createUser":
          return t.createUser(stub,args)
+     case "queryMylist":
+         return t.queryMylist(stub,args)
 		 default :
 		     return shim.Success([]byte(nil))
 	 }

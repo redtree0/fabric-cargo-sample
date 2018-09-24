@@ -85,7 +85,7 @@
 	 cm, _ := strconv.Atoi(args[3])
 	 pointAsBytes,_:=stub.GetState(args[5])
 	 var point PointContract
-	 
+
 	 json.Unmarshal(pointAsBytes,&point)
 	 if point.Total < cm {
 	      return shim.Error("not enough money")
@@ -93,9 +93,9 @@
 	 point.Total=point.Total-cm
 	 pbytes,_:=json.Marshal(point)
 	 fmt.Println("==test==")
-	 fmt.Println(string(pbytes))	 
+	 fmt.Println(string(pbytes))
      stub.PutState(args[5],pbytes)
-	
+
 	ckey := "CARGO"+args[0]
   cargocontext, _ := stub.GetState(ckey)
 
@@ -144,7 +144,7 @@
 
 	 key := "CARGO"+ args[0]
 	 cargoAsbytes, err := stub.GetState(key)
-	 
+
 
 	 if err != nil {
 		return shim.Error( "Unable to get accounts." )
@@ -157,19 +157,19 @@
 	 _ = json.Unmarshal( cargoAsbytes, &cargo )
 
    cargo.Status = FAIL
-   
+
    money:=cargo.Money
    cargo.Money = 0
    registrant:=cargo.Registrant
-   
+
    pointAsBytes,_:=stub.GetState(registrant)
    _ = json.Unmarshal(pointAsBytes,&point)
-   
+
    point.Total=point.Total+money
-   
+
    pbytes,_:=json.Marshal(point)
    _=stub.PutState(registrant,pbytes)
-   
+
 	 // Encode as JSON
 	 // Put back on the block
 	 bytes, err := json.Marshal( cargo )
@@ -260,3 +260,75 @@
 	 //fmt.Printf("Query Response:%s\n", bytes)
 	 return shim.Success(nil)
  }
+
+ /********************************************************
+  args[0] - UserId
+  자신과 관련한 화물의뢰리스트를 출력
+  UserId를 전달받아서 등록한자,운송자,수령자중 하나에 포함되어있다면 리스트를 출력하는 메소드
+ **********************************************************/
+//peer chaincode query -n cargo-app -c '{"Args":["queryMylist", "CARGOS20180606"]}' -C mychannel
+func (t *SmartContract) queryMylist(stub shim.ChaincodeStubInterface, args []string) peer.Response {
+
+ if len(args) != 1 {
+   return shim.Error("Incorrect number of arguments. Expecting 1")
+ }
+
+fmt.Println("query Mylist v3")
+ queryString := fmt.Sprintf("{\"selector\":{\"$or\":[{\"Registrant\":\"%s\"},{\"Driver\":\"%s\"},{\"Recipient\":\"%s\"}]}}", args[0],args[0],args[0])
+
+ 	queryResults, err := getQueryResultForQueryString(stub, queryString)
+
+ 	if err != nil {
+ 		return shim.Error(err.Error())
+ 	}
+
+     fmt.Printf("- queryAllCARGO:\n%s\n",queryResults)
+
+      return shim.Success(queryResults)
+}
+
+// =========================================================================================
+// getQueryResultForQueryString executes the passed in query string.
+// Result set is built and returned as a byte array containing the JSON results.
+// =========================================================================================
+func getQueryResultForQueryString(stub shim.ChaincodeStubInterface, queryString string) ([]byte, error) {
+
+	fmt.Printf("- getQueryResultForQueryString queryString:\n%s\n", queryString)
+
+	resultsIterator, err := stub.GetQueryResult(queryString)
+	if err != nil {
+		return nil, err
+	}
+	defer resultsIterator.Close()
+
+	// buffer is a JSON array containing QueryRecords
+	var buffer bytes.Buffer
+	buffer.WriteString("[")
+
+	bArrayMemberAlreadyWritten := false
+	for resultsIterator.HasNext() {
+		queryResponse, err := resultsIterator.Next()
+		if err != nil {
+			return nil, err
+		}
+		// Add a comma before array members, suppress it for the first array member
+		if bArrayMemberAlreadyWritten == true {
+			buffer.WriteString(",")
+		}
+		buffer.WriteString("{\"Key\":")
+		buffer.WriteString("\"")
+		buffer.WriteString(queryResponse.Key)
+		buffer.WriteString("\"")
+
+		buffer.WriteString(", \"Record\":")
+		// Record is a JSON object, so we write as-is
+		buffer.WriteString(string(queryResponse.Value))
+		buffer.WriteString("}")
+		bArrayMemberAlreadyWritten = true
+	}
+	buffer.WriteString("]")
+
+	fmt.Printf("- getQueryResultForQueryString queryResult:\n%s\n", buffer.String())
+
+	return buffer.Bytes(), nil
+}
