@@ -15,6 +15,14 @@ Args[7]- 수취자아이디,
 Args[8]- 상태(SUCCESS,FAIL,YET,COMPLETE)
 </code></pre>
 
+#### ● queryCargo - 화물예약의뢰리스트 출력(범위) (argc = 1)
+<pre><code>Args :
+Args[0]- 날짜(ex:20180909)
+ex) 20180909이라면 2018-06-06 ~ 2018-09-09까지의 모든 의뢰리스트 출력,
+    20180926이라면 2018-06-06 ~ 2018-09-09까지의 모든 의뢰리스트 출력
+</code></pre>
+
+
 #### ● cancelContract - 화물예약의뢰취소 (argc = 1)
 <pre><code>Args :
 Args[0]- 해당되는 키값(ex:20180909_1)
